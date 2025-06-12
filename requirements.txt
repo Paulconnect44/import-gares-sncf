@@ -1,0 +1,4 @@
+geopandas
+pandas
+requests
+shapely
