@@ -133,7 +133,7 @@ enriched_data = {
 wanted_tags = {
     "name",
     "railway:ref",
-    "ref:FR:uic8",
+    
     "ref:FR:sncf:resarail"
 }
 
@@ -224,5 +224,22 @@ for node in root.findall(".//node"):
     if node.attrib["id"] in needed_node_ids:
         new_root.append(node)
 
+# Ajout d'un tag old_name si le tag name a été modifié
+for el in new_root.findall(".//node") + new_root.findall(".//way"):
+    if el.get("action") != "modify":
+        continue
+    eid = int(el.attrib["id"])
+    enriched_row = enriched_data.get(eid, {})
+    original_row = gdf_osm[gdf_osm["osm_id"] == eid]
+    if "name" in wanted_tags and not original_row.empty:
+        original_name = original_row.iloc[0].get("name")
+        new_name = enriched_row.get("name")
+        if pd.notna(original_name) and pd.notna(new_name) and str(original_name) != str(new_name):
+            # Supprimer old_name existant s'il y en a un
+            for tag in el.findall("tag"):
+                if tag.attrib.get("k") == "old_name":
+                    el.remove(tag)
+            # Ajouter le tag old_name avec l'ancien nom
+            ET.SubElement(el, "tag", {"k": "old_name", "v": str(original_name)})
 
 ElementTree(new_root).write("output/overpass_result_modified.osm", encoding="utf-8", xml_declaration=True)
